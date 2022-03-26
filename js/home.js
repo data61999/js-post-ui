@@ -1,40 +1,57 @@
 import postApi from './api/postApi';
-import { setTextContent } from './uilts';
+import { setTextContent, truncateText } from './uilts';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+
+// handle dayjs.fromNow
+dayjs.extend(relativeTime);
 
 function createPostElement(post) {
   if (!post) return;
 
-  try {
-    // get and clone template
-    const templateElement = document.getElementById('postTemplate');
+  // get and clone template
+  const templateElement = document.getElementById('postTemplate');
 
-    const liElement = templateElement.content.firstElementChild.cloneNode(true);
+  const liElement = templateElement.content.firstElementChild.cloneNode(true);
 
-    // update DOM title, description, author, thumnail
-    // const titleElement = liElement.querySelector('[data-id="title"]');
-    // titleElement.textContent = post.title;
+  // update DOM title, description, author, thumnail
+  // const titleElement = liElement.querySelector('[data-id="title"]');
+  // titleElement.textContent = post.title;
 
-    // const descriptionElement = liElement.querySelector(
-    //   '[data-id="description"]'
-    // );
-    // descriptionElement.textContent = post.description;
+  // const descriptionElement = liElement.querySelector(
+  //   '[data-id="description"]'
+  // );
+  // descriptionElement.textContent = post.description;
 
-    // const authorElement = liElement.querySelector('[data-id="author"]');
-    // authorElement.textContent = post.author;
+  // const authorElement = liElement.querySelector('[data-id="author"]');
+  // authorElement.textContent = post.author;
 
-    setTextContent(liElement, 'title', post.title);
-    setTextContent(liElement, 'description', post.description);
-    setTextContent(liElement, 'author', post.author);
+  setTextContent(liElement, '[data-id="title"]', post.title);
+  setTextContent(
+    liElement,
+    '[data-id="description"]',
+    truncateText(post.description, 100)
+  );
+  setTextContent(liElement, '[data-id="author"]', post.author);
+  setTextContent(
+    liElement,
+    '[data-id="timeSpan"]',
+    `- ${dayjs(post.updateAt).fromNow()}`
+  );
 
-    const thumnailElement = liElement.querySelector('[data-id="thumbnail"]');
+  const thumnailElement = liElement.querySelector('[data-id="thumbnail"]');
+  if (thumnailElement) {
     thumnailElement.src = post.imageUrl;
-
-    // attach event
-
-    return liElement;
-  } catch (error) {
-    console.log('fail to create post', error);
+    // set default thumbnail when thumnail is error
+    thumnailElement.addEventListener('error', () => {
+      thumnailElement.src =
+        'https://via.placeholder.com/1368x400?text=thumnail';
+    });
   }
+
+  // attach event
+
+  return liElement;
 }
 
 function renderPostList(postList) {
@@ -58,6 +75,6 @@ function renderPostList(postList) {
     const { data, pagination } = await postApi.getAll(queryParams);
     renderPostList(data);
   } catch (error) {
-    console.log(error);
+    console.log('get all fail', error);
   }
 })();
