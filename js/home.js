@@ -60,20 +60,116 @@ function renderPostList(postList) {
   const ulElement = document.getElementById('postList');
   if (!ulElement) return;
 
+  // clear old post list before render new post list
+  ulElement.textContent = '';
+
   postList.forEach((post) => {
     const liElement = createPostElement(post);
     ulElement.appendChild(liElement);
   });
 }
 
+function handlePrevLinkClick(e) {
+  e.preventDefault();
+
+  const ulPagination = document.getElementById('pagination');
+  if (!ulPagination) return;
+
+  const page = Number.parseInt(ulPagination.dataset.page) || 1;
+  if (page <= 1) return;
+
+  handleFilterChange('_page', page - 1);
+}
+function handleNextLinkClick(e) {
+  e.preventDefault();
+
+  const ulPagination = document.getElementById('pagination');
+  if (!ulPagination) return;
+
+  const page = Number.parseInt(ulPagination.dataset.page) || 1;
+  const totalPage = Number.parseInt(ulPagination.dataset.totalPage);
+  if (page >= totalPage) return;
+
+  handleFilterChange('_page', page + 1);
+}
+
+function initPagination() {
+  const ulPagination = document.getElementById('pagination');
+  if (!ulPagination) return;
+
+  // add event click for prev link
+  const prevLink = ulPagination.firstElementChild?.firstElementChild;
+  if (prevLink) {
+    prevLink.addEventListener('click', handlePrevLinkClick);
+  }
+
+  // add event click for prev link
+  const nextLink = ulPagination.lastElementChild?.firstElementChild;
+  if (nextLink) {
+    nextLink.addEventListener('click', handleNextLinkClick);
+  }
+}
+
+function initURL() {
+  const url = new URL(window.location);
+  if (!url.searchParams.get('_page')) url.searchParams.set('_page', 1);
+  if (!url.searchParams.get('_limit')) url.searchParams.set('_limit', 6);
+
+  history.pushState({}, '', url);
+}
+
+function renderPagination(pagination) {
+  const ulPagination = document.getElementById('pagination');
+  if (!pagination || !ulPagination) return;
+
+  const { _page, _limit, _totalRows } = pagination;
+  console.log({ _page, _limit, _totalRows });
+  // calc total page
+  const totalPage = Math.ceil(_totalRows / _limit);
+
+  // save total page and current page to ul pagination
+  ulPagination.dataset.page = _page;
+  ulPagination.dataset.totalPage = totalPage;
+
+  // handle disable prev and next link
+  if (_page <= 1) ulPagination.firstElementChild?.classList.add('disabled');
+  else ulPagination.firstElementChild?.classList.remove('disabled');
+
+  if (_page >= totalPage)
+    ulPagination.lastElementChild?.classList.add('disabled');
+  else ulPagination.lastElementChild?.classList.remove('disabled');
+}
+
+async function handleFilterChange(filterName, filterValue) {
+  try {
+    //update query params
+    const url = new URL(window.location);
+    url.searchParams.set(filterName, filterValue);
+    history.pushState({}, '', url);
+
+    // fetch api
+    // re-render api post list
+    const { data, pagination } = await postApi.getAll(url.searchParams);
+    renderPostList(data);
+    renderPagination(pagination);
+  } catch (error) {
+    console.log('fetch post list fail', error);
+  }
+}
+
 (async () => {
   try {
-    const queryParams = {
-      _page: 1,
-      _limit: 6,
-    };
+    // binding event click for prev/next link
+    initPagination();
+
+    // set default params(_page, _limit) on url
+    initURL();
+
+    // fectch post list based on search params
+    const queryParams = new URLSearchParams(window.location.search);
     const { data, pagination } = await postApi.getAll(queryParams);
     renderPostList(data);
+    renderPagination(pagination);
   } catch (error) {
     console.log('get all fail', error);
   }
